@@ -1,8 +1,6 @@
 #
 ROOT=db
-DATABASE=stbs2
-HOST=s11
-DBSTRU=database.stru
+DBSTRU=stbs2.stru
 PWD      := $(shell pwd)
 .PHONY: table
 read.me:
@@ -10,17 +8,27 @@ read.me:
 	@echo "make all"
 all: stru language extension schema server mapuser type domain sequence table view function trigger diff
 stru: 
-	pg_dump $(DATABASE) -h $(HOST) -c -s >$(DBSTRU)
+	pg_dump stbs2 -c -s -h s08 -U cpn>$(DBSTRU)
 table:
 #	if [ -d "$(ROOT)/table" ]; then rm -fr $(ROOT)/table; fi
 	if [ -d "$(ROOT)/$@" ]; then rm -fr $(ROOT)/$@; fi
 	mkdir -p $(ROOT)/$@
-	./parser_table.pl            $(ROOT)/$@ $(DBSTRU) 
-	./parser_table_COLUMN.pl $(ROOT)/$@ $(DBSTRU) 
-	./parser_table_CONSTRAINT.pl $(ROOT)/$@ $(DBSTRU) 
-	./parser_table_INDEX.pl $(ROOT)/$@ $(DBSTRU) 
-	./parser_table_GRANT.pl $(ROOT)/$@ $(DBSTRU) 
-	./parser_table_COMMENT.pl $(ROOT)/$@ $(DBSTRU) 
+	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@
+	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@_constraint
+
+#	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@_column
+#	./parser_table_CONSTRAINT.pl $(ROOT)/$@ $(DBSTRU) 
+
+#table_COLUMN.pl $(ROOT)/$@ $(DBSTRU) 
+#	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@_foreing
+#	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@_column
+
+#	./parser_table.pl            $(ROOT)/$@ $(DBSTRU) 
+#	./parser_table_COLUMN.pl $(ROOT)/$@ $(DBSTRU) 
+#	./parser_table_CONSTRAINT.pl $(ROOT)/$@ $(DBSTRU) 
+#	./parser_table_INDEX.pl $(ROOT)/$@ $(DBSTRU) 
+#	./parser_table_GRANT.pl $(ROOT)/$@ $(DBSTRU) 
+#	./parser_table_COMMENT.pl $(ROOT)/$@ $(DBSTRU) 
 trigger:
 	if [ -d "$(ROOT)/$@" ]; then rm -fr $(ROOT)/$@; fi
 	mkdir -p $(ROOT)/$@
@@ -32,7 +40,8 @@ view:
 function:
 	if [ -d "$(ROOT)/$@" ]; then rm -fr $(ROOT)/$@; fi
 	mkdir -p $(ROOT)/$@
-	./parser_$@.pl            $(ROOT)/$@ $(DBSTRU) 
+#	./parser_$@.pl            $(ROOT)/$@ $(DBSTRU) 
+	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@
 sequence:
 	if [ -d "$(ROOT)/$@" ]; then rm -fr $(ROOT)/$@; fi
 	mkdir -p $(ROOT)/$@
@@ -70,5 +79,5 @@ mapuser:
 diff:
 	@echo "Сравнение последнего коммита и $(WEBROOT)"
 	git --work-tree=$(PWD) status|grep -v -f $(PWD)/exclude_diff
-#	git --work-tree=$(PWD) status|grep -v parser_dump/|grep -v parser_|egrep -v "#\s+(Makefile|READ.ME|database.stru)"
+#	git --work-tree=$(PWD) status|grep -v parser_dump/|grep -v parser_|egrep -v "#\s+(Makefile|READ.ME|stbs2.stru)"
     

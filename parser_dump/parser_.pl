@@ -7,21 +7,24 @@ use Data::Dumper;
 my $dir=$ARGV[0]."/";
 my $filestru=$ARGV[1];
 my $key=$ARGV[2];
-$dir="db/function/";
-$filestru="stbs2.stru"; 
-$key="function";
-
+#$dir="db/function/";
+#$filestru="stbs2.stru"; 
+#$key="function";
+print "dir=$dir filestru=$filestru key=$key\n";
+#exit;
 
 my ($str,$p0,$p2,$flstart,$hfile,$name,$filename,$schema,$skip);
 my $lexem={
    table=>{
      prefix=>'',
      start=>'^\s*CREATE( FOREIGN)? TABLE (\w+)\.(\w+)',
-     stop=> '^\s*ALTER\s+TABLE\s+(\w+)\.(\w+)\s+OWNER TO',
+     stop=> '^\s*ALTER( FOREIGN)? TABLE (\w+)\.(\w+) OWNER TO',
      stopprefix=>'--',
      suffix=>'_db',
      schema=>2,
      name=>3,
+     block=>sub{$schema=$_[1];$name=$_[2];},
+
    },
    table_foreing=>{
      prefix=>'',
@@ -35,6 +38,7 @@ my $lexem={
      start=>'^\s*ALTER TABLE ONLY (\w+)\.(\w+) ALTER COLUMN',
      stop=> '',
      suffix=>'_db',
+     block=>sub{$schema=$_[0];$name=$_[1];},
    },
    function=>{
      prefix=>'',
@@ -62,6 +66,7 @@ my $stop=$lexem->{$key}->{stop};
 my $stopprefix=$lexem->{$key}->{stopprefix};
 print "start=$start\n";
 print "stop=$stop\n";
+#exit;
 #my $str=
 #'CREATE FUNCTION audit.audit_table(target_table regclass) RETURNS void';
 #if ($str=~m/$start/){
