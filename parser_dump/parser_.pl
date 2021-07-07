@@ -40,6 +40,14 @@ my $lexem={
      suffix=>'_db',
      block=>sub{$schema=$_[0];$name=$_[1];},
    },
+   table_comment=>{
+     prefix=>'',
+     start=>'^COMMENT ON (TABLE|COLUMN) (\w+)\.(\w+)',
+     stop=> '',
+     stopprefix=>'',
+     suffix=>'',
+     block=>sub{$schema=$_[1];$name=$_[2];},
+   },
    function=>{
      prefix=>'',
      start=>'^\s*CREATE FUNCTION (\w+)\.(\w+)',
@@ -48,6 +56,7 @@ my $lexem={
      suffix=>'',
      block=>sub{$schema=$_[0];$name=$_[1];},
      replace=>sub{$str=~s/^CREATE/CREATE OR REPLACE/;},
+#COMMENT ON TABLE public.memstat IS 'Данные CDR из MEM';
 
    }
 };

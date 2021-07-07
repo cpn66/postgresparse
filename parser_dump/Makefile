@@ -13,8 +13,8 @@ table:
 #	if [ -d "$(ROOT)/table" ]; then rm -fr $(ROOT)/table; fi
 	if [ -d "$(ROOT)/$@" ]; then rm -fr $(ROOT)/$@; fi
 	mkdir -p $(ROOT)/$@
-	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@
-	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@_constraint
+#	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@
+	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@_comment
 
 #	./parser_.pl $(ROOT)/$@ $(DBSTRU) $@_column
 #	./parser_table_CONSTRAINT.pl $(ROOT)/$@ $(DBSTRU) 
