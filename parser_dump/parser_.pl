@@ -21,17 +21,8 @@ my $lexem={
      stop=> '^\s*ALTER( FOREIGN)? TABLE (\w+)\.(\w+) OWNER TO',
      stopprefix=>'--',
      suffix=>'_db',
-     schema=>2,
-     name=>3,
      block=>sub{$schema=$_[1];$name=$_[2];},
 
-   },
-   table_foreing=>{
-     prefix=>'',
-     start=>'^\s*CREATE\s+FOREIGN\s+TABLE\s+(\w+)\.(\w+)',
-     stop=> '^\s*ALTER\s+FOREIGN\s+TABLE\s+(\w+)\.(\w+)\s+OWNER TO',
-     stopprefix=>'--',
-     suffix=>'_db',
    },
    table_column=>{
      prefix=>'',
@@ -40,12 +31,35 @@ my $lexem={
      suffix=>'_db',
      block=>sub{$schema=$_[0];$name=$_[1];},
    },
+   table_constraint=>{
+     prefix=>'',
+     start=>'^ALTER TABLE ONLY (\w+)\.(\w+)\s*$',
+     stop=> '^\s*ADD CONSTRAINT ',
+     suffix=>'_db',
+     block=>sub{$schema=$_[0];$name=$_[1];},
+   },
+
+   table_index=>{
+     prefix=>'',
+     start=>'^CREATE INDEX (\w+) ON (\w+)\.(\w+) USING ',
+     stop=> '',
+     suffix=>'_db',
+     block=>sub{$schema=$_[1];$name=$_[2];},
+   },
+   table_grant=>{
+     prefix=>'',
+     start=>'^(GRANT|REVOKE) (\w+,?\w*) ON TABLE (\w+)\.(\w+)',
+     stop=> '',
+     suffix=>'_db',
+     block=>sub{$schema=$_[2];$name=$_[3];},
+   },
+
    table_comment=>{
      prefix=>'',
      start=>'^COMMENT ON (TABLE|COLUMN) (\w+)\.(\w+)',
      stop=> '',
      stopprefix=>'',
-     suffix=>'',
+     suffix=>'_db',
      block=>sub{$schema=$_[1];$name=$_[2];},
    },
    function=>{
@@ -55,10 +69,121 @@ my $lexem={
      stopprefix=>'--',
      suffix=>'',
      block=>sub{$schema=$_[0];$name=$_[1];},
-     replace=>sub{$str=~s/^CREATE/CREATE OR REPLACE/;},
+     replace=>sub{$str=~s/^CREATE/CREATE OR REPLACE/;}
+   },
+   domain=>{
+     prefix=>'',
+     start=>'^CREATE DOMAIN (\w+)\.(\w+)',
+     stop=> '^ALTER DOMAIN',
+     stopprefix=>'--',
+     suffix=>'',
+     block=>sub{$schema=$_[0];$name=$_[1];},
+    },
+   extention=>{
+     prefix=>'',
+     start=>'^CREATE EXTENSION IF NOT EXISTS (\w+)',
+     stop=> '',
+     stopprefix=>'',
+     suffix=>'',
+     block=>sub{$schema='public';$name=$_[1];},
+    },
+   type=>{
+     prefix=>'',
+     start=>'^CREATE TYPE (\w+)\.(\w+)',
+     stop=> '^ALTER TYPE (\w+\.\w+) OWNER TO',
+     stopprefix=>'--',
+     suffix=>'_tp',
+     block=>sub{$schema=$_[0];$name=$_[1];},
+     skip=>'^\s*$',
+    },
+   view=>{
+     prefix=>'',
+     start=>'^CREATE VIEW (\w+)\.(\w+)',
+     stop=> 'ALTER TABLE (\w+)\.(\w+) OWNER TO',
+     stopprefix=>'--',
+     suffix=>'_vw',
+     block=>sub{$schema=$_[0];$name=$_[1];},
+     skip=>'^\s*$',
+    },
+ 
+   trigger=>{
+     prefix=>'',
+     start=>'^CREATE TRIGGER .+ ON (\w+)\.(\w+) FOR ',
+     stop=> '',
+     stopprefix=>'',
+     suffix=>'_trig',
+     block=>sub{$schema=$_[0];$name=$_[1];},
+    },
+
+   language=>{
+     prefix=>'',
+     start=>'^CREATE OR REPLACE PROCEDURAL LANGUAGE (\w+)',
+     stop=> '',
+     stopprefix=>'',
+     suffix=>'_lang',
+     block=>sub{$schema='public';$name=$_[0];},
+    },
+
+   extension=>{
+     prefix=>'',
+     start=>'^CREATE EXTENSION IF NOT EXISTS (\w+) WITH SCHEMA (\w+)',
+     stop=> '',
+     stopprefix=>'',
+     suffix=>'_ex',
+     block=>sub{$schema=$_[1];$name=$_[0];},
+    },
+
+   server=>{
+     prefix=>'',
+     start=>'^CREATE SERVER (\w+) FOREIGN ',
+     stop=> 'ALTER SERVER (\w+) OWNER TO ',
+     stopprefix=>'--',
+     suffix=>'',
+     block=>sub{$schema='public';$name=$_[0];},
+     skip=>'^\s*$',
+    },
+   server_mapuser=>{
+     prefix=>'',
+     start=>'^CREATE USER MAPPING FOR (\w+) SERVER (\w+) OPTIONS ',
+     stop=> '\);',
+     stopprefix=>'',
+     suffix=>'',
+     block=>sub{$schema='public';$name=$_[1];},
+    },
+   schema=>{
+     prefix=>'',
+     start=>'^CREATE SCHEMA (\w+)',
+     stop=> '',
+     stopprefix=>'',
+     suffix=>'_sc',
+     block=>sub{$schema='public';$name=$_[0];},
+    },
+
+
+   sequence=>{
+     prefix=>'',
+     start=>'CREATE SEQUENCE (\w+)\.(\w+)',
+     stop=> ';',
+     stopprefix=>'',
+     suffix=>'',
+     block=>sub{$schema=$_[0];$name=$_[1];},
+     skip=>'^\s*$',
+    },
+
+   sequence_grant=>{
+     prefix=>'',
+     start=>'^(GRANT|REVOKE) (\w+,?\w*) ON SEQUENCE (\w+)\.(\w+)',
+     stop=> '',
+     stopprefix=>'',
+     suffix=>'',
+     block=>sub{$schema=$_[2];$name=$_[3];},
+     skip=>'^\s*$',
+    },
+
+
+
 #COMMENT ON TABLE public.memstat IS 'Данные CDR из MEM';
 
-   }
 };
 #CREATE FUNCTION audit.audit_table(target_table regclass) RETURNS void
 #    LANGUAGE sql
@@ -68,13 +193,17 @@ my $lexem={
 #ALTER FUNCTION audit.audit_table(target_table regclass) OWNER TO cpn;
 
 
-print "dir=$dir filestru=$filestru key=$key\n";
+#print "dir=$dir filestru=$filestru key=$key\n";
 #exit;
 my $start=$lexem->{$key}->{start};
 my $stop=$lexem->{$key}->{stop};
 my $stopprefix=$lexem->{$key}->{stopprefix};
-print "start=$start\n";
-print "stop=$stop\n";
+#print "start=$start\n";
+#print "stop=$stop\n";
+#print Dumper(\$lexem);
+#print Dumper(\$lexem->{$key});
+
+
 #exit;
 #my $str=
 #'CREATE FUNCTION audit.audit_table(target_table regclass) RETURNS void';
@@ -106,17 +235,22 @@ while ($str=<$hfilein>){
 	$lexem->{$key}->{'replace'}->() if defined $lexem->{$key}->{'replace'};
 #        print $str,"\n";
 #	$str=~s/^CREATE/CREATE OR REPLACE/;
-        print $str,"\n";
+#        print $str,"\n";
 
-	print  $schema,"\n";
-	print  $name,"\n";
+#	print  $schema,"\n";
+#	print  $name,"\n";
        $fl1=1;
      if ($schema=~/^public$/){
        $filename=$name.$lexem->{$key}->{'suffix'} .".sql";
      } else {
-       $filename=$schema.".".$name.$lexem->{$key}->{'suffix'} .".sql";
+       $filename=$schema.".".$name.$lexem->{$key}->{'suffix'}.".sql";
+#       print "$schema\n";
+#       print "$name\n";
+#       print "$lexem->{$key}->{'suffix'}\n";
+#       exit;
+
      } 
-     print "$dir $filename \n"; 
+#     print "$dir $filename \n"; 
      if (-e $dir.$filename){     
        open($hfile,">>$dir$filename")||die "Can not open file $filename";
        
@@ -132,8 +266,12 @@ while ($str=<$hfilein>){
         $str=$stopprefix.$str;
      }
      $fl1=0 ;
-     print $str,'NEXT',"\n";
    };
+   if ($lexem->{$key}->{'skip'}){
+     if ($str=~m/$lexem->{$key}->{'skip'}/){
+        next;
+     }
+   }
    print $hfile $str;
 }
 exit;
